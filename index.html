@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>El Hornico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-24 font-sans">
+
+  <!-- Header con selector de fiesta/evento -->
+  <header class="bg-slate-800/90 backdrop-blur sticky top-0 z-40 border-b border-slate-700 px-4 py-2.5">
+    <div class="flex justify-between items-center mb-2">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-tent text-emerald-400 text-lg"></i>
+        <h1 class="font-bold text-base text-white">El Hornico</h1>
+      </div>
+      <div class="flex gap-1.5">
+        <button onclick="exportData()" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center gap-1" title="Descargar Backup">
+          <i class="fa-solid fa-download"></i> Backup
+        </button>
+        <label class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs cursor-pointer" title="Cargar Backup">
+          <i class="fa-solid fa-upload"></i>
+          <input type="file" id="importInput" class="hidden" accept=".json" onchange="importData(event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Barra de selección de Fiesta / Evento -->
+    <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70">
+      <select id="eventSelector" onchange="changeActiveEvent()" class="bg-transparent text-sm text-emerald-400 font-semibold focus:outline-none flex-1 truncate">
+        <!-- Opciones dinámicas -->
+      </select>
+      <button onclick="promptNewEvent()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm">
+        <i class="fa-solid fa-plus"></i> Nueva
+      </button>
+      <button onclick="deleteActiveEvent()" class="p-1.5 text-slate-400 hover:text-rose-400 text-xs" title="Borrar esta fiesta">
+        <i class="fa-regular fa-trash-can"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-md mx-auto p-4 space-y-4">
+
+    <!-- TAB 1: TICKETS DEL EVENTO -->
+    <section id="viewExpenses" class="space-y-4">
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex justify-between items-center shadow-md">
+        <div>
+          <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gasto en esta fiesta</span>
+          <div id="totalExpenseEvent" class="text-2xl font-bold text-white">0,00 €</div>
+        </div>
+        <span id="ticketCountBadge" class="text-xs bg-slate-900 text-emerald-400 border border-slate-700 px-3 py-1 rounded-full font-medium">0 tickets</span>
+      </div>
+
+      <button onclick="openNewExpenseModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
+        <i class="fa-solid fa-receipt"></i> Añadir Ticket a esta fiesta
+      </button>
+
+      <div class="flex justify-between items-center pt-2">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tickets registrados</h2>
+      </div>
+
+      <div id="expenseList" class="space-y-2">
+        <!-- Render dinámico -->
+      </div>
+    </section>
+
+    <!-- TAB 2: BALANCES Y BIZUM DEL EVENTO -->
+    <section id="viewBalances" class="space-y-4 hidden">
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Desglose y Balance</h2>
+          <span class="text-[10px] text-slate-400">Pagado - Consumido</span>
+        </div>
+        <div id="balanceList" class="space-y-2.5">
+          <!-- Render dinámico -->
+        </div>
+      </div>
+
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>
+          <button onclick="copyWhatsAppSummary()" class="text-xs bg-emerald-700/40 hover:bg-emerald-700 text-emerald-300 border border-emerald-600/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp
+          </button>
+        </div>
+        <div id="settlementList" class="space-y-2 text-sm">
+          <!-- Render dinámico -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CENSO GENERAL -->
+    <section id="viewFamilies" class="space-y-4 hidden">
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Añadir al censo común</h2>
+        <div class="space-y-2">
+          <input type="text" id="newFamilyName" placeholder="Nombre (ej. Juan y María)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-slate-400">Adultos habituales</label>
+              <input type="number" id="newFamilyAdults" value="2" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-400">Niños habituales</label>
+              <input type="number" id="newFamilyChildren" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+          </div>
+          <button onclick="addFamily()" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.98] py-2 rounded-xl text-sm font-medium transition">
+            Guardar en el Censo
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Miembros del cuartelillo</h2>
+        <div id="familyList" class="space-y-2">
+          <!-- Render dinámico -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: REGISTRAR / EDITAR TICKET -->
+  <div id="expenseModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <div>
+          <h3 id="modalTitle" class="font-bold text-white text-base">Nuevo Ticket</h3>
+          <p id="modalEventName" class="text-xs text-emerald-400 font-medium"></p>
+        </div>
+        <button onclick="closeExpenseModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-sm flex-1">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Concepto</label>
+          <input type="text" id="expDesc" placeholder="Ej. Compra carnicería / Bebida" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Importe (€)</label>
+            <input type="number" step="0.01" id="expAmount" placeholder="0.00" oninput="updateLivePoints()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-lg font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Pagado por</label>
+            <select id="expPayer" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-emerald-500">
+            </select>
+          </div>
+        </div>
+
+        <!-- Presets rápidos -->
+        <div class="grid grid-cols-4 gap-1.5 pt-1">
+          <button onclick="applyPreset('last')" type="button" class="py-1.5 bg-emerald-700/50 hover:bg-emerald-700 text-emerald-200 text-xs rounded-lg font-medium">Último</button>
+          <button onclick="applyPreset('all')" type="button" class="py-1.5 bg-slate-700/60 hover:bg-slate-700 text-xs rounded-lg text-slate-300">Todos</button>
+          <button onclick="applyPreset('adults')" type="button" class="py-1.5 bg-slate-700/60 hover:bg-slate-700 text-xs rounded-lg text-slate-300">Solo Ad.</button>
+          <button onclick="applyPreset('clear')" type="button" class="py-1.5 bg-slate-700/60 hover:bg-slate-700 text-xs rounded-lg text-slate-300">Ninguno</button>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menús / Asistentes</span>
+            <span id="livePointsBadge" class="text-xs text-emerald-400 font-medium">0 pts (0,00 €/pt)</span>
+          </div>
+          <div id="modalParticipantList" class="space-y-2">
+            <!-- Filas dinámicas -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-700 bg-slate-800">
+        <button id="modalSubmitBtn" onclick="saveExpense()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] py-3 rounded-xl font-semibold text-white transition">
+          Guardar Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de navegación inferior -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-6 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
+    <button onclick="switchTab('expenses')" id="navExpenses" class="flex flex-col items-center gap-1 text-emerald-400">
+      <i class="fa-solid fa-receipt text-base"></i>
+      <span class="text-[11px] font-medium">Tickets</span>
+    </button>
+    <button onclick="switchTab('balances')" id="navBalances" class="flex flex-col items-center gap-1 text-slate-400">
+      <i class="fa-solid fa-scale-balanced text-base"></i>
+      <span class="text-[11px] font-medium">Balances</span>
+    </button>
+    <button onclick="switchTab('families')" id="navFamilies" class="flex flex-col items-center gap-1 text-slate-400">
+      <i class="fa-solid fa-users text-base"></i>
+      <span class="text-[11px] font-medium">Censo</span>
+    </button>
+  </nav>
+
+  <!-- LÓGICA COMPLETA DE LA APLICACIÓN -->
+  <script>
+    let appData = {
+      activeEventId: 1,
+      events: [
+        { id: 1, name: "Fiesta Principal" }
+      ],
+      families: [
+        { id: 1, name: "Paco y Ana", defaultAdults: 2, defaultChildren: 2 },
+        { id: 2, name: "Carlos y Elena", defaultAdults: 2, defaultChildren: 0 },
+        { id: 3, name: "Marcos (Soltero)", defaultAdults: 1, defaultChildren: 0 }
+      ],
+      expenses: []
+    };
+
+    let editingExpenseId = null;
+
+    function init() {
+      let saved = localStorage.getItem('cuartelillo_db_v2');
+      if (saved) {
+        try { 
+          appData = JSON.parse(saved); 
+          if (!appData.events || appData.events.length === 0) {
+            appData.events = [{ id: 1, name: "Fiesta Principal" }];
+            appData.activeEventId = 1;
+          }
+        } catch (e) { 
+          console.error(e); 
+        }
+      }
+      renderEventSelector();
+      renderAll();
+    }
+
+    function saveState() {
+      localStorage.setItem('cuartelillo_db_v2', JSON.stringify(appData));
+      renderAll();
+    }
+
+    function renderEventSelector() {
+      let sel = document.getElementById('eventSelector');
+      sel.innerHTML = '';
+      appData.events.forEach(ev => {
+        let opt = document.createElement('option');
+        opt.value = ev.id;
+        opt.innerText = ev.name;
+        if (ev.id === appData.activeEventId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function promptNewEvent() {
+      let name = prompt("Nombre de la nueva fiesta o evento (ej. 'Comida del Domingo'):");
+      if (!name || !name.trim()) return;
+
+      let newId = Date.now();
+      appData.events.push({ id: newId, name: name.trim() });
+      appData.activeEventId = newId;
+      renderEventSelector();
+      saveState();
+    }
+
+    function changeActiveEvent() {
+      appData.activeEventId = parseInt(document.getElementById('eventSelector').value);
+      saveState();
+    }
+
+    function deleteActiveEvent() {
+      if (appData.events.length <= 1) {
+        alert("Tiene que quedar al menos un evento en la lista.");
+        return;
+      }
+      let currentEvent = appData.events.find(e => e.id === appData.activeEventId);
+      if (!confirm(`¿Eliminar la fiesta "${currentEvent.name}" y todos sus tickets asociados?`)) return;
+
+      appData.expenses = appData.expenses.filter(e => e.eventId !== appData.activeEventId);
+      appData.events = appData.events.filter(e => e.id !== appData.activeEventId);
+      appData.activeEventId = appData.events[0].id;
+
+      renderEventSelector();
+      saveState();
+    }
+
+    function getCurrentEventExpenses() {
+      return appData.expenses.filter(e => e.eventId === appData.activeEventId);
+    }
+
+    function switchTab(tab) {
+      document.getElementById('viewExpenses').classList.toggle('hidden', tab !== 'expenses');
+      document.getElementById('viewBalances').classList.toggle('hidden', tab !== 'balances');
+      document.getElementById('viewFamilies').classList.toggle('hidden', tab !== 'families');
+
+      document.getElementById('navExpenses').className = `flex flex-col items-center gap-1 ${tab === 'expenses' ? 'text-emerald-400' : 'text-slate-400'}`;
+      document.getElementById('navBalances').className = `flex flex-col items-center gap-1 ${tab === 'balances' ? 'text-emerald-400' : 'text-slate-400'}`;
+      document.getElementById('navFamilies').className = `flex flex-col items-center gap-1 ${tab === 'families' ? 'text-emerald-400' : 'text-slate-400'}`;
+    }
+
+    function renderAll() {
+      renderFamilies();
+      renderExpenses();
+      renderBalances();
+    }
+
+    function renderFamilies() {
+      let container = document.getElementById('familyList');
+      container.innerHTML = '';
+      appData.families.forEach(f => {
+        let div = document.createElement('div');
+        div.className = "bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center";
+        div.innerHTML = `
+          <div>
+            <div class="font-semibold text-white text-sm">${f.name}</div>
+            <div class="text-xs text-slate-400">${f.defaultAdults} adultos • ${f.defaultChildren} niños</div>
+          </div>
+          <button onclick="deleteFamily(${f.id})" class="text-rose-400 hover:text-rose-300 p-2 text-xs">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addFamily() {
+      let name = document.getElementById('newFamilyName').value.trim();
+      let adults = parseInt(document.getElementById('newFamilyAdults').value) || 0;
+      let children = parseInt(document.getElementById('newFamilyChildren').value) || 0;
+      if (!name) return;
+
+      appData.families.push({
+        id: Date.now(),
+        name: name,
+        defaultAdults: adults,
+        defaultChildren: children
+      });
+
+      document.getElementById('newFamilyName').value = '';
+      saveState();
+    }
+
+    function deleteFamily(id) {
+      if (!confirm("¿Eliminar del censo? (Sus tickets previos seguirán existiendo)")) return;
+      appData.families = appData.families.filter(f => f.id !== id);
+      saveState();
+    }
+
+    function openNewExpenseModal() {
+      if (appData.families.length === 0) {
+        alert("Añade primero familias en el Censo.");
+        switchTab('families');
+        return;
+      }
+
+      editingExpenseId = null;
+      document.getElementById('modalTitle').innerText = "Nuevo Ticket";
+      document.getElementById('modalSubmitBtn').innerText = "Guardar Ticket";
+
+      let currentEvent = appData.events.find(e => e.id === appData.activeEventId);
+      document.getElementById('modalEventName').innerText = `Evento: ${currentEvent.name}`;
+      document.getElementById('expDesc').value = '';
+      document.getElementById('expAmount').value = '';
+
+      let select = document.getElementById('expPayer');
+      select.innerHTML = '';
+      appData.families.forEach(f => {
+        select.innerHTML += `<option value="${f.id}">${f.name}</option>`;
+      });
+
+      let currentExpenses = getCurrentEventExpenses();
+      let lastExpense = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
+
+      let list = document.getElementById('modalParticipantList');
+      list.innerHTML = '';
+
+      appData.families.forEach(f => {
+        let initialAdults = f.defaultAdults;
+        let initialChildren = f.defaultChildren;
+
+        if (lastExpense) {
+          let p = lastExpense.participants.find(part => part.familyId === f.id);
+          initialAdults = p ? p.adults : 0;
+          initialChildren = p ? p.children : 0;
+        }
+
+        let row = document.createElement('div');
+        row.className = "bg-slate-900 border border-slate-700/80 p-2.5 rounded-xl flex items-center justify-between";
+        row.dataset.familyId = f.id;
+        row.innerHTML = `
+          <div class="w-1/3">
+            <div class="font-medium text-xs text-white truncate">${f.name}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">Ad.</span>
+              <button type="button" onclick="adjustCount(this, -1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">-</button>
+              <span class="count-adults w-4 text-center font-semibold text-xs text-white">${initialAdults}</span>
+              <button type="button" onclick="adjustCount(this, 1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">+</button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">Niñ.</span>
+              <button type="button" onclick="adjustCount(this, -1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">-</button>
+              <span class="count-children w-4 text-center font-semibold text-xs text-emerald-400">${initialChildren}</span>
+              <button type="button" onclick="adjustCount(this, 1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">+</button>
+            </div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      updateLivePoints();
+      document.getElementById('expenseModal').classList.remove('hidden');
+    }
+
+    function openEditExpenseModal(id) {
+      let expense = appData.expenses.find(e => e.id === id);
+      if (!expense) return;
+
+      editingExpenseId = id;
+      document.getElementById('modalTitle').innerText = "Modificar Ticket";
+      document.getElementById('modalSubmitBtn').innerText = "Actualizar Ticket";
+
+      let currentEvent = appData.events.find(e => e.id === expense.eventId);
+      document.getElementById('modalEventName').innerText = `Evento: ${currentEvent ? currentEvent.name : ''}`;
+      document.getElementById('expDesc').value = expense.description;
+      document.getElementById('expAmount').value = expense.amount;
+
+      let select = document.getElementById('expPayer');
+      select.innerHTML = '';
+      appData.families.forEach(f => {
+        let opt = document.createElement('option');
+        opt.value = f.id;
+        opt.innerText = f.name;
+        if (f.id === expense.payerId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      let list = document.getElementById('modalParticipantList');
+      list.innerHTML = '';
+
+      appData.families.forEach(f => {
+        let p = expense.participants.find(part => part.familyId === f.id);
+        let currentAdults = p ? p.adults : 0;
+        let currentChildren = p ? p.children : 0;
+
+        let row = document.createElement('div');
+        row.className = "bg-slate-900 border border-slate-700/80 p-2.5 rounded-xl flex items-center justify-between";
+        row.dataset.familyId = f.id;
+        row.innerHTML = `
+          <div class="w-1/3">
+            <div class="font-medium text-xs text-white truncate">${f.name}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">Ad.</span>
+              <button type="button" onclick="adjustCount(this, -1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">-</button>
+              <span class="count-adults w-4 text-center font-semibold text-xs text-white">${currentAdults}</span>
+              <button type="button" onclick="adjustCount(this, 1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">+</button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">Niñ.</span>
+              <button type="button" onclick="adjustCount(this, -1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">-</button>
+              <span class="count-children w-4 text-center font-semibold text-xs text-emerald-400">${currentChildren}</span>
+              <button type="button" onclick="adjustCount(this, 1)" class="w-6 h-6 bg-slate-800 text-slate-200 rounded flex items-center justify-center font-bold text-xs">+</button>
+            </div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      updateLivePoints();
+      document.getElementById('expenseModal').classList.remove('hidden');
+    }
+
+    function closeExpenseModal() {
+      document.getElementById('expenseModal').classList.add('hidden');
+      editingExpenseId = null;
+    }
+
+    function adjustCount(btn, delta) {
+      let span = btn.parentElement.querySelector('span:not(.text-\\[10px\\])');
+      let val = Math.max(0, parseInt(span.innerText) + delta);
+      span.innerText = val;
+      updateLivePoints();
+    }
+
+    function applyPreset(type) {
+      let rows = document.querySelectorAll('#modalParticipantList > div');
+      let currentExpenses = getCurrentEventExpenses();
+      let lastExpense = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
+
+      rows.forEach(r => {
+        let fId = parseInt(r.dataset.familyId);
+        let f = appData.families.find(x => x.id === fId);
+        let adultSpan = r.querySelector('.count-adults');
+        let childSpan = r.querySelector('.count-children');
+
+        if (type === 'last' && lastExpense) {
+          let p = lastExpense.participants.find(part => part.familyId === fId);
+          adultSpan.innerText = p ? p.adults : 0;
+          childSpan.innerText = p ? p.children : 0;
+        } else if (type === 'all' || (type === 'last' && !lastExpense)) {
+          adultSpan.innerText = f.defaultAdults;
+          childSpan.innerText = f.defaultChildren;
+        } else if (type === 'adults') {
+          adultSpan.innerText = f.defaultAdults;
+          childSpan.innerText = 0;
+        } else if (type === 'clear') {
+          adultSpan.innerText = 0;
+          childSpan.innerText = 0;
+        }
+      });
+      updateLivePoints();
+    }
+
+    function updateLivePoints() {
+      let totalPts = 0;
+      let rows = document.querySelectorAll('#modalParticipantList > div');
+      rows.forEach(r => {
+        let adults = parseInt(r.querySelector('.count-adults').innerText);
+        let children = parseInt(r.querySelector('.count-children').innerText);
+        totalPts += (adults * 1.0) + (children * 0.5);
+      });
+
+      let amount = parseFloat(document.getElementById('expAmount').value) || 0;
+      let costPerPt = totalPts > 0 ? (amount / totalPts) : 0;
+
+      document.getElementById('livePointsBadge').innerText = 
+        `${totalPts} pts (${costPerPt.toFixed(2)} €/pt)`;
+    }
+
+    function saveExpense() {
+      let desc = document.getElementById('expDesc').value.trim() || 'Gasto fiesta';
+      let amount = parseFloat(document.getElementById('expAmount').value);
+      let payerId = parseInt(document.getElementById('expPayer').value);
+
+      if (isNaN(amount) || amount <= 0) {
+        alert("Introduce un importe válido");
+        return;
+      }
+
+      let parts = [];
+      let totalPts = 0;
+      let rows = document.querySelectorAll('#modalParticipantList > div');
+      rows.forEach(r => {
+        let fId = parseInt(r.dataset.familyId);
+        let adults = parseInt(r.querySelector('.count-adults').innerText);
+        let children = parseInt(r.querySelector('.count-children').innerText);
+        let pts = (adults * 1.0) + (children * 0.5);
+        if (pts > 0) {
+          parts.push({ familyId: fId, adults, children, points: pts });
+          totalPts += pts;
+        }
+      });
+
+      if (totalPts === 0) {
+        alert("Debe haber al menos un comensal o menú asignado.");
+        return;
+      }
+
+      if (editingExpenseId) {
+        let expenseIndex = appData.expenses.findIndex(e => e.id === editingExpenseId);
+        if (expenseIndex !== -1) {
+          appData.expenses[expenseIndex].description = desc;
+          appData.expenses[expenseIndex].amount = amount;
+          appData.expenses[expenseIndex].payerId = payerId;
+          appData.expenses[expenseIndex].totalPoints = totalPts;
+          appData.expenses[expenseIndex].participants = parts;
+        }
+      } else {
+        appData.expenses.push({
+          id: Date.now(),
+          eventId: appData.activeEventId,
+          description: desc,
+          amount: amount,
+          payerId: payerId,
+          totalPoints: totalPts,
+          participants: parts,
+          date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
+        });
+      }
+
+      closeExpenseModal();
+      saveState();
+    }
+
+    function deleteExpense(id) {
+      if (!confirm("¿Eliminar este ticket?")) return;
+      appData.expenses = appData.expenses.filter(e => e.id !== id);
+      saveState();
+    }
+
+    function renderExpenses() {
+      let container = document.getElementById('expenseList');
+      container.innerHTML = '';
+      let currentExpenses = getCurrentEventExpenses();
+      let total = 0;
+
+      currentExpenses.forEach(e => {
+        total += e.amount;
+        let payer = appData.families.find(f => f.id === e.payerId)?.name || 'Desconocido';
+        let div = document.createElement('div');
+        div.className = "bg-slate-800 border border-slate-700 p-3 rounded-xl flex items-center justify-between";
+        div.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white text-sm">${e.description}</span>
+              <span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">${e.date}</span>
+            </div>
+            <div class="text-xs text-slate-400">Pagado por: <span class="text-emerald-300 font-medium">${payer}</span> • ${e.totalPoints} pts</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-white text-base mr-1">${e.amount.toFixed(2)} €</span>
+            <button onclick="openEditExpenseModal(${e.id})" class="text-slate-400 hover:text-emerald-400 text-xs p-1" title="Modificar">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteExpense(${e.id})" class="text-rose-400 hover:text-rose-300 text-xs p-1" title="Eliminar">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('totalExpenseEvent').innerText = `${total.toFixed(2)} €`;
+      document.getElementById('ticketCountBadge').innerText = `${currentExpenses.length} tickets`;
+    }
+
+    function calculateDetailedBalances() {
+      let details = {};
+      appData.families.forEach(f => {
+        details[f.id] = { paid: 0, consumed: 0, balance: 0 };
+      });
+
+      let currentExpenses = getCurrentEventExpenses();
+
+      currentExpenses.forEach(e => {
+        if (details[e.payerId]) {
+          details[e.payerId].paid += e.amount;
+        }
+
+        let costPerPt = e.amount / e.totalPoints;
+        e.participants.forEach(p => {
+          if (details[p.familyId]) {
+            details[p.familyId].consumed += (p.points * costPerPt);
+          }
+        });
+      });
+
+      appData.families.forEach(f => {
+        details[f.id].balance = details[f.id].paid - details[f.id].consumed;
+      });
+
+      return details;
+    }
+
+    function renderBalances() {
+      let details = calculateDetailedBalances();
+      let container = document.getElementById('balanceList');
+      container.innerHTML = '';
+
+      appData.families.forEach(f => {
+        let item = details[f.id] || { paid: 0, consumed: 0, balance: 0 };
+        let bal = item.balance;
+        let isPositive = bal >= 0;
+
+        let div = document.createElement('div');
+        div.className = "p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 space-y-1.5";
+        div.innerHTML = `
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-white font-semibold">${f.name}</span>
+            <span class="font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">
+              ${isPositive ? '+' : ''}${bal.toFixed(2)} €
+            </span>
+          </div>
+          <div class="flex justify-between text-xs text-slate-400 border-t border-slate-800 pt-1.5">
+            <span>Aportó en tickets: <strong class="text-slate-300 font-medium">${item.paid.toFixed(2)} €</strong></span>
+            <span>Le toca pagar: <strong class="text-slate-300 font-medium">${item.consumed.toFixed(2)} €</strong></span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      let creditors = [];
+      let debtors = [];
+      for (let fId in details) {
+        let val = Math.round(details[fId].balance * 100) / 100;
+        let name = appData.families.find(f => f.id == fId)?.name || 'Familia';
+        if (val > 0.01) creditors.push({ name, amount: val });
+        else if (val < -0.01) debtors.push({ name, amount: -val });
+      }
+
+      creditors.sort((a, b) => b.amount - a.amount);
+      debtors.sort((a, b) => b.amount - a.amount);
+
+      let settlements = [];
+      let i = 0, j = 0;
+      while (i < creditors.length && j < debtors.length) {
+        let pay = Math.min(creditors[i].amount, debtors[j].amount);
+        settlements.push({
+          from: debtors[j].name,
+          to: creditors[i].name,
+          amount: Math.round(pay * 100) / 100
+        });
+
+        creditors[i].amount -= pay;
+        debtors[j].amount -= pay;
+        if (creditors[i].amount < 0.01) i++;
+        if (debtors[j].amount < 0.01) j++;
+      }
+
+      let settlContainer = document.getElementById('settlementList');
+      settlContainer.innerHTML = '';
+
+      if (settlements.length === 0) {
+        settlContainer.innerHTML = `<p class="text-slate-400 text-xs italic">No hay deudas pendientes en este evento.</p>`;
+      } else {
+        settlements.forEach(s => {
+          let div = document.createElement('div');
+          div.className = "bg-slate-900 border border-slate-700/80 p-2.5 rounded-xl flex items-center justify-between";
+          div.innerHTML = `
+            <div class="text-xs">
+              <span class="font-semibold text-rose-300">${s.from}</span>
+              <span class="text-slate-400"> le paga a </span>
+              <span class="font-semibold text-emerald-300">${s.to}</span>
+            </div>
+            <span class="font-bold text-white text-sm">${s.amount.toFixed(2)} €</span>
+          `;
+          settlContainer.appendChild(div);
+        });
+      }
+
+      window.lastSettlements = settlements;
+      window.lastDetails = details;
+    }
+
+    function copyWhatsAppSummary() {
+      let currentEvent = appData.events.find(e => e.id === appData.activeEventId);
+      let currentExpenses = getCurrentEventExpenses();
+      let total = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+      let text = `📊 *CUENTAS: ${currentEvent.name.toUpperCase()}*\n`;
+      text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} € (${currentExpenses.length} tickets)\n\n`;
+      text += `📋 *DESGLOSE*\n`;
+
+      appData.families.forEach(f => {
+        let item = window.lastDetails[f.id] || { paid: 0, consumed: 0, balance: 0 };
+        let bal = item.balance;
+        let sign = bal >= 0 ? '+' : '';
+        let estado = bal >= 0 ? 'le devuelven' : 'tiene que pagar';
+
+        text += `• *${f.name}*:\n`;
+        text += `  - Pagó en tickets: ${item.paid.toFixed(2)} €\n`;
+        text += `  - A pagar: ${item.consumed.toFixed(2)} €\n`;
+        text += `  - *Saldo:* ${sign}${bal.toFixed(2)} € (${estado})\n\n`;
+      });
+
+      text += `📲 *LIQUIDACIÓN BIZUM (Mínimos pagos)*\n`;
+      if (!window.lastSettlements || window.lastSettlements.length === 0) {
+        text += `No hay pagos pendientes.\n`;
+      } else {
+        window.lastSettlements.forEach((s, idx) => {
+          text += `${idx + 1}. *${s.from}* paga a *${s.to}*: ${s.amount.toFixed(2)} €\n`;
+        });
+      }
+
+      navigator.clipboard.writeText(text).then(() => {
+        alert("¡Resumen detallado copiado para WhatsApp!");
+      });
+    }
+
+    function exportData() {
+      let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+      let dlAnchorElem = document.createElement('a');
+      dlAnchorElem.setAttribute("href", dataStr);
+      let year = new Date().getFullYear();
+      dlAnchorElem.setAttribute("download", `cuartelillo_completo_${year}.json`);
+      dlAnchorElem.click();
+    }
+
+    function importData(event) {
+      let reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          let imported = JSON.parse(e.target.result);
+          if (imported.families && imported.expenses) {
+            appData = imported;
+            renderEventSelector();
+            saveState();
+            alert("Copia de seguridad restaurada correctamente.");
+          } else {
+            alert("El archivo no tiene el formato correcto.");
+          }
+        } catch (err) {
+          alert("Error al cargar la copia.");
+        }
+      };
+      reader.readAsText(event.target.files[0]);
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
