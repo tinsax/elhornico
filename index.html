@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <!-- Selector de Fiesta / Evento -->
+      <!-- Barra de selección de Fiesta / Evento -->
       <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70">
         <select id="eventSelector" onchange="changeActiveEvent()" class="bg-transparent text-sm text-emerald-400 font-semibold focus:outline-none flex-1 truncate">
         </select>
@@ -121,8 +121,26 @@
         </div>
       </section>
 
-      <!-- TAB 3: CENSO GENERAL -->
+      <!-- TAB 3: AJUSTES Y CENSO GENERAL -->
       <section id="viewFamilies" class="space-y-4 hidden">
+        <!-- Configuración Global Cuartelillo -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Configuración Cuartelillo</h2>
+              <p class="text-[11px] text-slate-400">Proporción menú infantil para todo el cuartelillo</p>
+            </div>
+            <select id="globalChildPercent" onchange="updateChildPercent()" class="bg-slate-900 border border-slate-700 text-white font-bold text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+              <option value="0.4">40% (0.4)</option>
+              <option value="0.5">50% (0.5 mitad)</option>
+              <option value="0.6">60% (0.6)</option>
+              <option value="0.7">70% (0.7)</option>
+              <option value="0.8">80% (0.8)</option>
+              <option value="1.0">100% (igual adulto)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Añadir al censo común</h2>
           <div class="space-y-2">
@@ -233,16 +251,38 @@
 
     let appData = {
       activeEventId: 1,
+      childWeight: 0.5,
       events: [{ id: 1, name: "Fiesta Principal" }],
       families: [
         { id: 1, name: "Paco y Ana", defaultAdults: 2, defaultChildren: 2 },
         { id: 2, name: "Carlos y Elena", defaultAdults: 2, defaultChildren: 0 },
         { id: 3, name: "Marcos (Soltero)", defaultAdults: 1, defaultChildren: 0 }
       ],
-      expenses: []
+      expenses: [],
+      settlementStatus: {}
     };
 
     let editingExpenseId = null;
+
+    function getChildWeight() {
+      return (typeof appData.childWeight === 'number') ? appData.childWeight : 0.5;
+    }
+
+    function updateChildPercent() {
+      let val = parseFloat(document.getElementById('globalChildPercent').value);
+      appData.childWeight = val;
+
+      appData.expenses.forEach(exp => {
+        let totalPts = 0;
+        exp.participants.forEach(p => {
+          p.points = (p.adults * 1.0) + (p.children * val);
+          totalPts += p.points;
+        });
+        exp.totalPoints = totalPts;
+      });
+
+      saveState();
+    }
 
     async function init() {
       if ('serviceWorker' in navigator) {
@@ -301,8 +341,14 @@
 
       if (data && data.data) {
         appData = data.data;
+        if (!appData.settlementStatus) appData.settlementStatus = {};
+        if (typeof appData.childWeight !== 'number') appData.childWeight = 0.5;
       }
       document.getElementById('syncStatus').innerText = "Nube OK";
+      
+      let selWeight = document.getElementById('globalChildPercent');
+      if (selWeight) selWeight.value = getChildWeight().toString();
+
       renderEventSelector();
       renderAll();
     }
@@ -598,25 +644,27 @@
     }
 
     function updateLivePoints() {
+      let childWeight = getChildWeight();
       let totalPts = 0;
       let rows = document.querySelectorAll('#modalParticipantList > div');
       rows.forEach(r => {
         let adults = parseInt(r.querySelector('.count-adults').innerText);
         let children = parseInt(r.querySelector('.count-children').innerText);
-        totalPts += (adults * 1.0) + (children * 0.5);
+        totalPts += (adults * 1.0) + (children * childWeight);
       });
 
       let amount = parseFloat(document.getElementById('expAmount').value) || 0;
       let costPerPt = totalPts > 0 ? (amount / totalPts) : 0;
 
       document.getElementById('livePointsBadge').innerText = 
-        `${totalPts} pts (${costPerPt.toFixed(2)} €/pt)`;
+        `${totalPts.toFixed(1)} pts (${costPerPt.toFixed(2)} €/pt)`;
     }
 
     function saveExpense() {
       let desc = document.getElementById('expDesc').value.trim() || 'Gasto fiesta';
       let amount = parseFloat(document.getElementById('expAmount').value);
       let payerId = parseInt(document.getElementById('expPayer').value);
+      let childWeight = getChildWeight();
 
       if (isNaN(amount) || amount <= 0) {
         alert("Introduce un importe válido");
@@ -630,7 +678,7 @@
         let fId = parseInt(r.dataset.familyId);
         let adults = parseInt(r.querySelector('.count-adults').innerText);
         let children = parseInt(r.querySelector('.count-children').innerText);
-        let pts = (adults * 1.0) + (children * 0.5);
+        let pts = (adults * 1.0) + (children * childWeight);
         if (pts > 0) {
           parts.push({ familyId: fId, adults, children, points: pts });
           totalPts += pts;
@@ -674,6 +722,7 @@
       saveState();
     }
 
+    // LISTA DE TICKETS: Puntos eliminados para dejarlo limpio
     function renderExpenses() {
       let container = document.getElementById('expenseList');
       container.innerHTML = '';
@@ -691,7 +740,7 @@
               <span class="font-bold text-white text-sm">${e.description}</span>
               <span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">${e.date}</span>
             </div>
-            <div class="text-xs text-slate-400">Pagado por: <span class="text-emerald-300 font-medium">${payer}</span> • ${e.totalPoints} pts</div>
+            <div class="text-xs text-slate-400">Pagado por: <span class="text-emerald-300 font-medium">${payer}</span></div>
           </div>
           <div class="flex items-center gap-2">
             <span class="font-bold text-white text-base mr-1">${e.amount.toFixed(2)} €</span>
@@ -710,13 +759,11 @@
       document.getElementById('ticketCountBadge').innerText = `${currentExpenses.length} tickets`;
     }
 
-    // Calcula balances leyendo los asistentes REALES anotados en los tickets de la fiesta
     function calculateDetailedBalances() {
       let details = {};
       let currentExpenses = getCurrentEventExpenses();
-
-      // Buscamos la configuración real de asistentes mirando el último ticket de la fiesta
       let sampleTicket = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
+      let childWeight = getChildWeight();
 
       appData.families.forEach(f => {
         let attendedAdults = f.defaultAdults;
@@ -734,7 +781,7 @@
           balance: 0,
           partyAdults: attendedAdults,
           partyChildren: attendedChildren,
-          partyPoints: (attendedAdults * 1.0) + (attendedChildren * 0.5)
+          partyPoints: (attendedAdults * 1.0) + (attendedChildren * childWeight)
         };
       });
 
@@ -758,32 +805,39 @@
       return details;
     }
 
+    function toggleSettlement(key) {
+      if (!appData.settlementStatus) appData.settlementStatus = {};
+      appData.settlementStatus[key] = !appData.settlementStatus[key];
+      saveState();
+    }
+
     function renderBalances() {
       let details = calculateDetailedBalances();
       let container = document.getElementById('balanceList');
       let currentExpenses = getCurrentEventExpenses();
       let totalSpent = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+      let childWeight = getChildWeight();
 
-      // Los puntos totales del evento se obtienen sumando los asistentes reales de los tickets
       let sampleTicket = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
       let totalPartyPoints = 0;
       if (sampleTicket) {
         totalPartyPoints = sampleTicket.totalPoints;
       } else {
         appData.families.forEach(f => {
-          totalPartyPoints += (f.defaultAdults * 1.0) + (f.defaultChildren * 0.5);
+          totalPartyPoints += (f.defaultAdults * 1.0) + (f.defaultChildren * childWeight);
         });
       }
 
       let adultPrice = totalPartyPoints > 0 ? (totalSpent / totalPartyPoints) : 0;
-      let childPrice = adultPrice * 0.5;
+      let childPrice = adultPrice * childWeight;
 
       container.innerHTML = '';
 
       if (totalSpent > 0 && totalPartyPoints > 0) {
+        let percentText = Math.round(childWeight * 100);
         let headerDiv = document.createElement('div');
         headerDiv.className = "bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-2.5 text-center text-xs text-emerald-300 font-medium mb-3";
-        headerDiv.innerHTML = `Precio menú: <strong class="text-white">${adultPrice.toFixed(2)} €</strong> adulto • <strong class="text-white">${childPrice.toFixed(2)} €</strong> niño`;
+        headerDiv.innerHTML = `Precio menú: <strong class="text-white">${adultPrice.toFixed(2)} €</strong> adulto • <strong class="text-white">${childPrice.toFixed(2)} €</strong> niño (${percentText}%)`;
         container.appendChild(headerDiv);
       }
 
@@ -823,7 +877,9 @@
         container.appendChild(div);
       });
 
-      // Liquidación Bizum
+      // =========================================================
+      // LIQUIDACIÓN BIZUM OPTIMIZADA (MÍNIMO NÚMERO DE TRANSFERENCIAS)
+      // =========================================================
       let creditors = [];
       let debtors = [];
       for (let fId in details) {
@@ -833,21 +889,57 @@
         else if (val < -0.01) debtors.push({ name, amount: -val });
       }
 
+      let settlements = [];
+
+      // FASE 1: Cancelaciones directas 1 a 1 (Importes exactos)
+      for (let d = debtors.length - 1; d >= 0; d--) {
+        for (let c = creditors.length - 1; c >= 0; c--) {
+          if (Math.abs(debtors[d].amount - creditors[c].amount) < 0.01) {
+            let exactAmount = debtors[d].amount;
+            let fromName = debtors[d].name;
+            let toName = creditors[c].name;
+            let key = `${appData.activeEventId}_${fromName}_${toName}_${exactAmount.toFixed(2)}`;
+            let isDone = !!(appData.settlementStatus && appData.settlementStatus[key]);
+
+            settlements.push({
+              key: key,
+              from: fromName,
+              to: toName,
+              amount: exactAmount,
+              done: isDone
+            });
+
+            debtors.splice(d, 1);
+            creditors.splice(c, 1);
+            break;
+          }
+        }
+      }
+
+      // FASE 2: Liquidar los restos ordenando de mayor a menor
       creditors.sort((a, b) => b.amount - a.amount);
       debtors.sort((a, b) => b.amount - a.amount);
 
-      let settlements = [];
       let i = 0, j = 0;
       while (i < creditors.length && j < debtors.length) {
         let pay = Math.min(creditors[i].amount, debtors[j].amount);
+        let roundAmount = Math.round(pay * 100) / 100;
+        let fromName = debtors[j].name;
+        let toName = creditors[i].name;
+        let key = `${appData.activeEventId}_${fromName}_${toName}_${roundAmount.toFixed(2)}`;
+        let isDone = !!(appData.settlementStatus && appData.settlementStatus[key]);
+
         settlements.push({
-          from: debtors[j].name,
-          to: creditors[i].name,
-          amount: Math.round(pay * 100) / 100
+          key: key,
+          from: fromName,
+          to: toName,
+          amount: roundAmount,
+          done: isDone
         });
 
-        creditors[i].amount -= pay;
-        debtors[j].amount -= pay;
+        creditors[i].amount = Math.round((creditors[i].amount - pay) * 100) / 100;
+        debtors[j].amount = Math.round((debtors[j].amount - pay) * 100) / 100;
+
         if (creditors[i].amount < 0.01) i++;
         if (debtors[j].amount < 0.01) j++;
       }
@@ -860,14 +952,28 @@
       } else {
         settlements.forEach(s => {
           let div = document.createElement('div');
-          div.className = "bg-slate-900 border border-slate-700/80 p-2.5 rounded-xl flex items-center justify-between";
+          div.className = `p-2.5 rounded-xl border flex items-center justify-between transition ${
+            s.done 
+              ? 'bg-slate-950/60 border-slate-800 text-slate-500 opacity-60' 
+              : 'bg-slate-900 border-slate-700/80 text-white'
+          }`;
           div.innerHTML = `
-            <div class="text-xs">
-              <span class="font-semibold text-rose-300">${s.from}</span>
-              <span class="text-slate-400"> le paga a </span>
-              <span class="font-semibold text-emerald-300">${s.to}</span>
+            <div class="text-xs ${s.done ? 'line-through' : ''}">
+              <span class="font-semibold ${s.done ? 'text-slate-500' : 'text-rose-300'}">${s.from}</span>
+              <span class="${s.done ? 'text-slate-600' : 'text-slate-400'}"> le paga a </span>
+              <span class="font-semibold ${s.done ? 'text-slate-500' : 'text-emerald-300'}">${s.to}</span>
             </div>
-            <span class="font-bold text-white text-sm">${s.amount.toFixed(2)} €</span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm ${s.done ? 'text-slate-500 line-through' : 'text-white'}">${s.amount.toFixed(2)} €</span>
+              <button onclick="toggleSettlement('${s.key}')" class="px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+                s.done 
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+              }">
+                <i class="fa-solid ${s.done ? 'fa-check' : 'fa-clock'}"></i>
+                <span>${s.done ? 'Pagado' : 'Pendiente'}</span>
+              </button>
+            </div>
           `;
           settlContainer.appendChild(div);
         });
@@ -877,6 +983,7 @@
       window.lastDetails = details;
       window.lastAdultPrice = adultPrice;
       window.lastChildPrice = childPrice;
+      window.lastChildWeight = childWeight;
     }
 
     function copyWhatsAppSummary() {
@@ -887,7 +994,8 @@
       let text = `📊 *CUENTAS: ${currentEvent.name.toUpperCase()}*\n`;
       text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} €\n`;
       if (window.lastAdultPrice) {
-        text += `🏷️ *Precio menú:* ${window.lastAdultPrice.toFixed(2)} € adulto | ${window.lastChildPrice.toFixed(2)} € niño\n\n`;
+        let percent = Math.round(window.lastChildWeight * 100);
+        text += `🏷️ *Precio menú:* ${window.lastAdultPrice.toFixed(2)} € adulto | ${window.lastChildPrice.toFixed(2)} € niño (${percent}%)\n\n`;
       } else {
         text += `\n`;
       }
@@ -917,12 +1025,13 @@
         text += `  - *Saldo:* ${sign}${bal.toFixed(2)} € (${estado})\n\n`;
       });
 
-      text += `📲 *LIQUIDACIÓN BIZUM (Mínimos pagos)*\n`;
+      text += `📲 *LIQUIDACIÓN BIZUM*\n`;
       if (!window.lastSettlements || window.lastSettlements.length === 0) {
         text += `No hay pagos pendientes.\n`;
       } else {
         window.lastSettlements.forEach((s, idx) => {
-          text += `${idx + 1}. *${s.from}* paga a *${s.to}*: ${s.amount.toFixed(2)} €\n`;
+          let statusIcon = s.done ? '✅ (Pagado)' : '⏳ (Pendiente)';
+          text += `${idx + 1}. *${s.from}* paga a *${s.to}*: ${s.amount.toFixed(2)} € ${statusIcon}\n`;
         });
       }
 
