@@ -16,7 +16,7 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-24 font-sans">
 
-  <!-- PANTALLA DE LOGIN (Visible si no hay sesión activa) -->
+  <!-- PANTALLA DE LOGIN -->
   <div id="loginScreen" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm space-y-5 shadow-2xl">
       <div class="text-center space-y-1">
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <!-- Barra de selección de Fiesta / Evento -->
+      <!-- Selector de Fiesta / Evento -->
       <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70">
         <select id="eventSelector" onchange="changeActiveEvent()" class="bg-transparent text-sm text-emerald-400 font-semibold focus:outline-none flex-1 truncate">
         </select>
@@ -244,7 +244,6 @@
 
     let editingExpenseId = null;
 
-    // Inicialización y comprobación de sesión
     async function init() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js');
@@ -292,7 +291,6 @@
       showLogin();
     }
 
-    // Cargar datos desde Supabase
     async function loadCloudData() {
       document.getElementById('syncStatus').innerText = "Cargando...";
       const { data, error } = await supabaseClient
@@ -309,7 +307,6 @@
       renderAll();
     }
 
-    // Guardar datos en Supabase y localmente
     async function saveState() {
       renderAll();
       document.getElementById('syncStatus').innerText = "Guardando...";
@@ -713,13 +710,33 @@
       document.getElementById('ticketCountBadge').innerText = `${currentExpenses.length} tickets`;
     }
 
+    // Calcula balances leyendo los asistentes REALES anotados en los tickets de la fiesta
     function calculateDetailedBalances() {
       let details = {};
-      appData.families.forEach(f => {
-        details[f.id] = { paid: 0, consumed: 0, balance: 0 };
-      });
-
       let currentExpenses = getCurrentEventExpenses();
+
+      // Buscamos la configuración real de asistentes mirando el último ticket de la fiesta
+      let sampleTicket = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
+
+      appData.families.forEach(f => {
+        let attendedAdults = f.defaultAdults;
+        let attendedChildren = f.defaultChildren;
+
+        if (sampleTicket) {
+          let part = sampleTicket.participants.find(p => p.familyId === f.id);
+          attendedAdults = part ? part.adults : 0;
+          attendedChildren = part ? part.children : 0;
+        }
+
+        details[f.id] = { 
+          paid: 0, 
+          consumed: 0, 
+          balance: 0,
+          partyAdults: attendedAdults,
+          partyChildren: attendedChildren,
+          partyPoints: (attendedAdults * 1.0) + (attendedChildren * 0.5)
+        };
+      });
 
       currentExpenses.forEach(e => {
         if (details[e.payerId]) {
@@ -744,19 +761,57 @@
     function renderBalances() {
       let details = calculateDetailedBalances();
       let container = document.getElementById('balanceList');
+      let currentExpenses = getCurrentEventExpenses();
+      let totalSpent = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+      // Los puntos totales del evento se obtienen sumando los asistentes reales de los tickets
+      let sampleTicket = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
+      let totalPartyPoints = 0;
+      if (sampleTicket) {
+        totalPartyPoints = sampleTicket.totalPoints;
+      } else {
+        appData.families.forEach(f => {
+          totalPartyPoints += (f.defaultAdults * 1.0) + (f.defaultChildren * 0.5);
+        });
+      }
+
+      let adultPrice = totalPartyPoints > 0 ? (totalSpent / totalPartyPoints) : 0;
+      let childPrice = adultPrice * 0.5;
+
       container.innerHTML = '';
 
+      if (totalSpent > 0 && totalPartyPoints > 0) {
+        let headerDiv = document.createElement('div');
+        headerDiv.className = "bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-2.5 text-center text-xs text-emerald-300 font-medium mb-3";
+        headerDiv.innerHTML = `Precio menú: <strong class="text-white">${adultPrice.toFixed(2)} €</strong> adulto • <strong class="text-white">${childPrice.toFixed(2)} €</strong> niño`;
+        container.appendChild(headerDiv);
+      }
+
       appData.families.forEach(f => {
-        let item = details[f.id] || { paid: 0, consumed: 0, balance: 0 };
+        let item = details[f.id] || { paid: 0, consumed: 0, balance: 0, partyAdults: 0, partyChildren: 0 };
         let bal = item.balance;
         let isPositive = bal >= 0;
+
+        let composicion = '';
+        if (item.partyAdults > 0 && item.partyChildren > 0) {
+          composicion = `${item.partyAdults} adultos + ${item.partyChildren} niños`;
+        } else if (item.partyAdults > 0) {
+          composicion = `${item.partyAdults} adultos`;
+        } else if (item.partyChildren > 0) {
+          composicion = `${item.partyChildren} niños`;
+        } else {
+          composicion = `0 comensales (no asistió)`;
+        }
 
         let div = document.createElement('div');
         div.className = "p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 space-y-1.5";
         div.innerHTML = `
           <div class="flex justify-between items-center text-sm">
-            <span class="text-white font-semibold">${f.name}</span>
-            <span class="font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">
+            <div>
+              <span class="text-white font-semibold">${f.name}</span>
+              <div class="text-[11px] text-emerald-400 font-medium">${composicion}</div>
+            </div>
+            <span class="font-bold text-base ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">
               ${isPositive ? '+' : ''}${bal.toFixed(2)} €
             </span>
           </div>
@@ -768,6 +823,7 @@
         container.appendChild(div);
       });
 
+      // Liquidación Bizum
       let creditors = [];
       let debtors = [];
       for (let fId in details) {
@@ -819,6 +875,8 @@
 
       window.lastSettlements = settlements;
       window.lastDetails = details;
+      window.lastAdultPrice = adultPrice;
+      window.lastChildPrice = childPrice;
     }
 
     function copyWhatsAppSummary() {
@@ -827,18 +885,35 @@
       let total = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
 
       let text = `📊 *CUENTAS: ${currentEvent.name.toUpperCase()}*\n`;
-      text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} € (${currentExpenses.length} tickets)\n\n`;
-      text += `📋 *DESGLOSE POR PERSONA/FAMILIA*\n`;
+      text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} €\n`;
+      if (window.lastAdultPrice) {
+        text += `🏷️ *Precio menú:* ${window.lastAdultPrice.toFixed(2)} € adulto | ${window.lastChildPrice.toFixed(2)} € niño\n\n`;
+      } else {
+        text += `\n`;
+      }
+
+      text += `📋 *DESGLOSE POR FAMILIA*\n`;
 
       appData.families.forEach(f => {
-        let item = window.lastDetails[f.id] || { paid: 0, consumed: 0, balance: 0 };
+        let item = window.lastDetails[f.id] || { paid: 0, consumed: 0, balance: 0, partyAdults: 0, partyChildren: 0 };
         let bal = item.balance;
         let sign = bal >= 0 ? '+' : '';
         let estado = bal >= 0 ? 'le devuelven' : 'tiene que pagar';
+        
+        let composicion = '';
+        if (item.partyAdults > 0 && item.partyChildren > 0) {
+          composicion = `${item.partyAdults} adultos + ${item.partyChildren} niños`;
+        } else if (item.partyAdults > 0) {
+          composicion = `${item.partyAdults} adultos`;
+        } else if (item.partyChildren > 0) {
+          composicion = `${item.partyChildren} niños`;
+        } else {
+          composicion = `0 comensales`;
+        }
 
-        text += `• *${f.name}*:\n`;
+        text += `• *${f.name}* (${composicion}):\n`;
+        text += `  - Consumo total: ${item.consumed.toFixed(2)} €\n`;
         text += `  - Pagó en tickets: ${item.paid.toFixed(2)} €\n`;
-        text += `  - Le toca consumir: ${item.consumed.toFixed(2)} €\n`;
         text += `  - *Saldo:* ${sign}${bal.toFixed(2)} € (${estado})\n\n`;
       });
 
@@ -852,7 +927,7 @@
       }
 
       navigator.clipboard.writeText(text).then(() => {
-        alert("¡Resumen detallado copiado para WhatsApp!");
+        alert("¡Resumen copiado para WhatsApp!");
       });
     }
 
