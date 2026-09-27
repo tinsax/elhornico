@@ -6,125 +6,164 @@
   <title>El Hornico</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SDK de Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-24 font-sans">
 
-  <!-- Header con selector de fiesta/evento -->
-  <header class="bg-slate-800/90 backdrop-blur sticky top-0 z-40 border-b border-slate-700 px-4 py-2.5">
-    <div class="flex justify-between items-center mb-2">
-      <div class="flex items-center gap-2">
-        <i class="fa-solid fa-tent text-emerald-400 text-lg"></i>
-        <h1 class="font-bold text-base text-white">El Hornico</h1>
+  <!-- PANTALLA DE LOGIN (Visible si no hay sesión activa) -->
+  <div id="loginScreen" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm space-y-5 shadow-2xl">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto text-xl mb-2">
+          <i class="fa-solid fa-tent"></i>
+        </div>
+        <h2 class="text-xl font-bold text-white">El Hornico</h2>
+        <p class="text-xs text-slate-400">Introduce tus credenciales para acceder</p>
       </div>
-      <div class="flex gap-1.5">
-        <button onclick="exportData()" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center gap-1" title="Descargar Backup">
-          <i class="fa-solid fa-download"></i> Backup
-        </button>
-        <label class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs cursor-pointer" title="Cargar Backup">
-          <i class="fa-solid fa-upload"></i>
-          <input type="file" id="importInput" class="hidden" accept=".json" onchange="importData(event)">
-        </label>
-      </div>
-    </div>
 
-    <!-- Barra de selección de Fiesta / Evento -->
-    <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70">
-      <select id="eventSelector" onchange="changeActiveEvent()" class="bg-transparent text-sm text-emerald-400 font-semibold focus:outline-none flex-1 truncate">
-        <!-- Opciones dinámicas -->
-      </select>
-      <button onclick="promptNewEvent()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm">
-        <i class="fa-solid fa-plus"></i> Nueva
-      </button>
-      <button onclick="deleteActiveEvent()" class="p-1.5 text-slate-400 hover:text-rose-400 text-xs" title="Borrar esta fiesta">
-        <i class="fa-regular fa-trash-can"></i>
-      </button>
-    </div>
-  </header>
-
-  <!-- Contenedor Principal -->
-  <main class="max-w-md mx-auto p-4 space-y-4">
-
-    <!-- TAB 1: TICKETS DEL EVENTO -->
-    <section id="viewExpenses" class="space-y-4">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex justify-between items-center shadow-md">
+      <form onsubmit="handleLogin(event)" class="space-y-3">
         <div>
-          <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gasto en esta fiesta</span>
-          <div id="totalExpenseEvent" class="text-2xl font-bold text-white">0,00 €</div>
+          <label class="block text-xs text-slate-400 mb-1">Email</label>
+          <input type="email" id="loginEmail" required placeholder="tu@email.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <span id="ticketCountBadge" class="text-xs bg-slate-900 text-emerald-400 border border-slate-700 px-3 py-1 rounded-full font-medium">0 tickets</span>
-      </div>
-
-      <button onclick="openNewExpenseModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-        <i class="fa-solid fa-receipt"></i> Añadir Ticket a esta fiesta
-      </button>
-
-      <div class="flex justify-between items-center pt-2">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tickets registrados</h2>
-      </div>
-
-      <div id="expenseList" class="space-y-2">
-        <!-- Render dinámico -->
-      </div>
-    </section>
-
-    <!-- TAB 2: BALANCES Y BIZUM DEL EVENTO -->
-    <section id="viewBalances" class="space-y-4 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Desglose y Balance</h2>
-          <span class="text-[10px] text-slate-400">Pagado - Consumido</span>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <div id="balanceList" class="space-y-2.5">
-          <!-- Render dinámico -->
-        </div>
-      </div>
+        <button type="submit" id="btnLogin" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] py-2.5 rounded-xl font-semibold text-sm text-white transition flex justify-center items-center gap-2">
+          <span>Iniciar Sesión</span>
+        </button>
+      </form>
+    </div>
+  </div>
 
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>
-          <button onclick="copyWhatsAppSummary()" class="text-xs bg-emerald-700/40 hover:bg-emerald-700 text-emerald-300 border border-emerald-600/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition">
-            <i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp
+  <!-- APLICACIÓN PRINCIPAL -->
+  <div id="appScreen" class="hidden">
+    <!-- Header con selector de fiesta/evento -->
+    <header class="bg-slate-800/90 backdrop-blur sticky top-0 z-40 border-b border-slate-700 px-4 py-2.5">
+      <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-tent text-emerald-400 text-lg"></i>
+          <h1 class="font-bold text-base text-white">El Hornico</h1>
+          <span id="syncStatus" class="text-[10px] text-emerald-400/80 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">Nube OK</span>
+        </div>
+        <div class="flex gap-1.5 items-center">
+          <button onclick="exportData()" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center gap-1" title="Descargar Backup">
+            <i class="fa-solid fa-download"></i>
+          </button>
+          <button onclick="handleLogout()" class="px-2 py-1.5 bg-slate-700 hover:bg-rose-900/60 text-slate-200 hover:text-rose-300 rounded-lg text-xs flex items-center gap-1" title="Cerrar sesión">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
-        <div id="settlementList" class="space-y-2 text-sm">
-          <!-- Render dinámico -->
-        </div>
       </div>
-    </section>
 
-    <!-- TAB 3: CENSO GENERAL -->
-    <section id="viewFamilies" class="space-y-4 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Añadir al censo común</h2>
-        <div class="space-y-2">
-          <input type="text" id="newFamilyName" placeholder="Nombre (ej. Juan y María)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[11px] text-slate-400">Adultos habituales</label>
-              <input type="number" id="newFamilyAdults" value="2" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-            </div>
-            <div>
-              <label class="text-[11px] text-slate-400">Niños habituales</label>
-              <input type="number" id="newFamilyChildren" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-            </div>
+      <!-- Barra de selección de Fiesta / Evento -->
+      <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70">
+        <select id="eventSelector" onchange="changeActiveEvent()" class="bg-transparent text-sm text-emerald-400 font-semibold focus:outline-none flex-1 truncate">
+        </select>
+        <button onclick="promptNewEvent()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm">
+          <i class="fa-solid fa-plus"></i> Nueva
+        </button>
+        <button onclick="deleteActiveEvent()" class="p-1.5 text-slate-400 hover:text-rose-400 text-xs" title="Borrar esta fiesta">
+          <i class="fa-regular fa-trash-can"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="max-w-md mx-auto p-4 space-y-4">
+
+      <!-- TAB 1: TICKETS DEL EVENTO -->
+      <section id="viewExpenses" class="space-y-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex justify-between items-center shadow-md">
+          <div>
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Gasto en esta fiesta</span>
+            <div id="totalExpenseEvent" class="text-2xl font-bold text-white">0,00 €</div>
           </div>
-          <button onclick="addFamily()" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.98] py-2 rounded-xl text-sm font-medium transition">
-            Guardar en el Censo
-          </button>
+          <span id="ticketCountBadge" class="text-xs bg-slate-900 text-emerald-400 border border-slate-700 px-3 py-1 rounded-full font-medium">0 tickets</span>
         </div>
-      </div>
 
-      <div class="space-y-2">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Miembros del cuartelillo</h2>
-        <div id="familyList" class="space-y-2">
-          <!-- Render dinámico -->
+        <button onclick="openNewExpenseModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
+          <i class="fa-solid fa-receipt"></i> Añadir Ticket a esta fiesta
+        </button>
+
+        <div class="flex justify-between items-center pt-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tickets registrados</h2>
         </div>
-      </div>
-    </section>
-  </main>
+
+        <div id="expenseList" class="space-y-2"></div>
+      </section>
+
+      <!-- TAB 2: BALANCES Y BIZUM DEL EVENTO -->
+      <section id="viewBalances" class="space-y-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Desglose y Balance</h2>
+            <span class="text-[10px] text-slate-400">Pagado - Consumido</span>
+          </div>
+          <div id="balanceList" class="space-y-2.5"></div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>
+            <button onclick="copyWhatsAppSummary()" class="text-xs bg-emerald-700/40 hover:bg-emerald-700 text-emerald-300 border border-emerald-600/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition">
+              <i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp
+            </button>
+          </div>
+          <div id="settlementList" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: CENSO GENERAL -->
+      <section id="viewFamilies" class="space-y-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Añadir al censo común</h2>
+          <div class="space-y-2">
+            <input type="text" id="newFamilyName" placeholder="Nombre (ej. Juan y María)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] text-slate-400">Adultos habituales</label>
+                <input type="number" id="newFamilyAdults" value="2" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400">Niños habituales</label>
+                <input type="number" id="newFamilyChildren" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+              </div>
+            </div>
+            <button onclick="addFamily()" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.98] py-2 rounded-xl text-sm font-medium transition">
+              Guardar en el Censo
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Miembros del cuartelillo</h2>
+          <div id="familyList" class="space-y-2"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Barra de navegación inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-6 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
+      <button onclick="switchTab('expenses')" id="navExpenses" class="flex flex-col items-center gap-1 text-emerald-400">
+        <i class="fa-solid fa-receipt text-base"></i>
+        <span class="text-[11px] font-medium">Tickets</span>
+      </button>
+      <button onclick="switchTab('balances')" id="navBalances" class="flex flex-col items-center gap-1 text-slate-400">
+        <i class="fa-solid fa-scale-balanced text-base"></i>
+        <span class="text-[11px] font-medium">Balances</span>
+      </button>
+      <button onclick="switchTab('families')" id="navFamilies" class="flex flex-col items-center gap-1 text-slate-400">
+        <i class="fa-solid fa-users text-base"></i>
+        <span class="text-[11px] font-medium">Censo</span>
+      </button>
+    </nav>
+  </div>
 
   <!-- MODAL: REGISTRAR / EDITAR TICKET -->
   <div id="expenseModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
@@ -155,7 +194,7 @@
           </div>
         </div>
 
-        <!-- Presets rápidos -->
+        <!-- Presets -->
         <div class="grid grid-cols-4 gap-1.5 pt-1">
           <button onclick="applyPreset('last')" type="button" class="py-1.5 bg-emerald-700/50 hover:bg-emerald-700 text-emerald-200 text-xs rounded-lg font-medium">Último</button>
           <button onclick="applyPreset('all')" type="button" class="py-1.5 bg-slate-700/60 hover:bg-slate-700 text-xs rounded-lg text-slate-300">Todos</button>
@@ -168,9 +207,7 @@
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menús / Asistentes</span>
             <span id="livePointsBadge" class="text-xs text-emerald-400 font-medium">0 pts (0,00 €/pt)</span>
           </div>
-          <div id="modalParticipantList" class="space-y-2">
-            <!-- Filas dinámicas -->
-          </div>
+          <div id="modalParticipantList" class="space-y-2"></div>
         </div>
       </div>
 
@@ -182,29 +219,19 @@
     </div>
   </div>
 
-  <!-- Barra de navegación inferior -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-6 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
-    <button onclick="switchTab('expenses')" id="navExpenses" class="flex flex-col items-center gap-1 text-emerald-400">
-      <i class="fa-solid fa-receipt text-base"></i>
-      <span class="text-[11px] font-medium">Tickets</span>
-    </button>
-    <button onclick="switchTab('balances')" id="navBalances" class="flex flex-col items-center gap-1 text-slate-400">
-      <i class="fa-solid fa-scale-balanced text-base"></i>
-      <span class="text-[11px] font-medium">Balances</span>
-    </button>
-    <button onclick="switchTab('families')" id="navFamilies" class="flex flex-col items-center gap-1 text-slate-400">
-      <i class="fa-solid fa-users text-base"></i>
-      <span class="text-[11px] font-medium">Censo</span>
-    </button>
-  </nav>
-
-  <!-- LÓGICA COMPLETA DE LA APLICACIÓN -->
+  <!-- SCRIPT Y LÓGICA COMPLETA -->
   <script>
+    // ==========================================
+    // CONFIGURACIÓN SUPABASE
+    // ==========================================
+    const SUPABASE_URL = "https://vgmccjmtbkhkyjcofavs.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_mLZ4kpulyi0O3UizTz08XA_UkC_vFGy";
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let appData = {
       activeEventId: 1,
-      events: [
-        { id: 1, name: "Fiesta Principal" }
-      ],
+      events: [{ id: 1, name: "Fiesta Principal" }],
       families: [
         { id: 1, name: "Paco y Ana", defaultAdults: 2, defaultChildren: 2 },
         { id: 2, name: "Carlos y Elena", defaultAdults: 2, defaultChildren: 0 },
@@ -215,26 +242,83 @@
 
     let editingExpenseId = null;
 
-    function init() {
-      let saved = localStorage.getItem('cuartelillo_db_v2');
-      if (saved) {
-        try { 
-          appData = JSON.parse(saved); 
-          if (!appData.events || appData.events.length === 0) {
-            appData.events = [{ id: 1, name: "Fiesta Principal" }];
-            appData.activeEventId = 1;
-          }
-        } catch (e) { 
-          console.error(e); 
-        }
+    // Inicialización y comprobación de sesión
+    async function init() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        showApp();
+        await loadCloudData();
+      } else {
+        showLogin();
       }
+    }
+
+    function showLogin() {
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+    }
+
+    function showApp() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      let btn = document.getElementById('btnLogin');
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Entrando...`;
+
+      let email = document.getElementById('loginEmail').value.trim();
+      let password = document.getElementById('loginPassword').value;
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      btn.innerHTML = `<span>Iniciar Sesión</span>`;
+
+      if (error) {
+        alert("Credenciales incorrectas: " + error.message);
+      } else {
+        showApp();
+        await loadCloudData();
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      showLogin();
+    }
+
+    // Cargar datos desde Supabase
+    async function loadCloudData() {
+      document.getElementById('syncStatus').innerText = "Cargando...";
+      const { data, error } = await supabaseClient
+        .from('app_state')
+        .select('data')
+        .eq('id', 'cuartelillo_principal')
+        .single();
+
+      if (data && data.data) {
+        appData = data.data;
+      }
+      document.getElementById('syncStatus').innerText = "Nube OK";
       renderEventSelector();
       renderAll();
     }
 
-    function saveState() {
-      localStorage.setItem('cuartelillo_db_v2', JSON.stringify(appData));
+    // Guardar datos en Supabase y localmente
+    async function saveState() {
       renderAll();
+      document.getElementById('syncStatus').innerText = "Guardando...";
+
+      const { error } = await supabaseClient
+        .from('app_state')
+        .upsert({ id: 'cuartelillo_principal', data: appData, updated_at: new Date().toISOString() });
+
+      if (error) {
+        document.getElementById('syncStatus').innerText = "Error Nube";
+        console.error(error);
+      } else {
+        document.getElementById('syncStatus').innerText = "Nube OK";
+      }
     }
 
     function renderEventSelector() {
@@ -250,7 +334,7 @@
     }
 
     function promptNewEvent() {
-      let name = prompt("Nombre de la nueva fiesta o evento (ej. 'Comida del Domingo'):");
+      let name = prompt("Nombre de la nueva fiesta (ej. 'Comida del Domingo'):");
       if (!name || !name.trim()) return;
 
       let newId = Date.now();
@@ -267,11 +351,11 @@
 
     function deleteActiveEvent() {
       if (appData.events.length <= 1) {
-        alert("Tiene que quedar al menos un evento en la lista.");
+        alert("Debe quedar al menos una fiesta.");
         return;
       }
       let currentEvent = appData.events.find(e => e.id === appData.activeEventId);
-      if (!confirm(`¿Eliminar la fiesta "${currentEvent.name}" y todos sus tickets asociados?`)) return;
+      if (!confirm(`¿Eliminar la fiesta "${currentEvent.name}" y todos sus tickets?`)) return;
 
       appData.expenses = appData.expenses.filter(e => e.eventId !== appData.activeEventId);
       appData.events = appData.events.filter(e => e.id !== appData.activeEventId);
@@ -338,7 +422,7 @@
     }
 
     function deleteFamily(id) {
-      if (!confirm("¿Eliminar del censo? (Sus tickets previos seguirán existiendo)")) return;
+      if (!confirm("¿Eliminar del censo?")) return;
       appData.families = appData.families.filter(f => f.id !== id);
       saveState();
     }
@@ -552,7 +636,7 @@
       });
 
       if (totalPts === 0) {
-        alert("Debe haber al menos un comensal o menú asignado.");
+        alert("Debe haber al menos un comensal asignado.");
         return;
       }
 
@@ -739,7 +823,7 @@
 
       let text = `📊 *CUENTAS: ${currentEvent.name.toUpperCase()}*\n`;
       text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} € (${currentExpenses.length} tickets)\n\n`;
-      text += `📋 *DESGLOSE*\n`;
+      text += `📋 *DESGLOSE POR PERSONA/FAMILIA*\n`;
 
       appData.families.forEach(f => {
         let item = window.lastDetails[f.id] || { paid: 0, consumed: 0, balance: 0 };
@@ -749,7 +833,7 @@
 
         text += `• *${f.name}*:\n`;
         text += `  - Pagó en tickets: ${item.paid.toFixed(2)} €\n`;
-        text += `  - A pagar: ${item.consumed.toFixed(2)} €\n`;
+        text += `  - Le toca consumir: ${item.consumed.toFixed(2)} €\n`;
         text += `  - *Saldo:* ${sign}${bal.toFixed(2)} € (${estado})\n\n`;
       });
 
@@ -774,26 +858,6 @@
       let year = new Date().getFullYear();
       dlAnchorElem.setAttribute("download", `cuartelillo_completo_${year}.json`);
       dlAnchorElem.click();
-    }
-
-    function importData(event) {
-      let reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          let imported = JSON.parse(e.target.result);
-          if (imported.families && imported.expenses) {
-            appData = imported;
-            renderEventSelector();
-            saveState();
-            alert("Copia de seguridad restaurada correctamente.");
-          } else {
-            alert("El archivo no tiene el formato correcto.");
-          }
-        } catch (err) {
-          alert("Error al cargar la copia.");
-        }
-      };
-      reader.readAsText(event.target.files[0]);
     }
 
     window.onload = init;
