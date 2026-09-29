@@ -52,15 +52,19 @@
           <i class="fa-solid fa-tent text-emerald-400 text-lg"></i>
           <div>
             <h1 class="font-bold text-sm text-white leading-tight">El Hornico</h1>
-            <p id="headerCurrentEvent" class="text-[11px] text-emerald-400 font-medium truncate max-w-[170px]"></p>
+            <p id="headerCurrentEvent" class="text-[11px] text-emerald-400 font-medium truncate max-w-[150px]"></p>
           </div>
         </div>
 
-        <!-- Acciones a la derecha con icono de nube y tick -->
+        <!-- Acciones a la derecha -->
         <div class="flex gap-2 items-center">
           <div id="syncStatus" class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400" title="Sincronizado">
             <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
           </div>
+          <!-- Botón Engranaje Configuración / Censo -->
+          <button onclick="openSettingsModal()" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center justify-center transition active:scale-95" title="Configuración y Censo">
+            <i class="fa-solid fa-gear"></i>
+          </button>
           <button onclick="exportData()" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center justify-center" title="Descargar Backup">
             <i class="fa-solid fa-download"></i>
           </button>
@@ -145,73 +149,85 @@
           <div id="settlementList" class="space-y-2 text-sm"></div>
         </div>
       </section>
-
-      <!-- TAB 3: AJUSTES Y CENSO GENERAL -->
-      <section id="viewFamilies" class="space-y-4 hidden">
-        <!-- Configuración Global Cuartelillo -->
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Configuración Cuartelillo</h2>
-              <p class="text-[11px] text-slate-400">Proporción menú infantil para todo el cuartelillo</p>
-            </div>
-            <select id="globalChildPercent" onchange="updateChildPercent()" class="bg-slate-900 border border-slate-700 text-white font-bold text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500">
-              <option value="0.4">40% (0.4)</option>
-              <option value="0.5">50% (0.5 mitad)</option>
-              <option value="0.6">60% (0.6)</option>
-              <option value="0.7">70% (0.7)</option>
-              <option value="0.8">80% (0.8)</option>
-              <option value="1.0">100% (igual adulto)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Añadir al censo común</h2>
-          <div class="space-y-2">
-            <input type="text" id="newFamilyName" placeholder="Nombre (ej. Juan y María)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[11px] text-slate-400">Adultos habituales</label>
-                <input type="number" id="newFamilyAdults" value="2" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-              </div>
-              <div>
-                <label class="text-[11px] text-slate-400">Niños habituales</label>
-                <input type="number" id="newFamilyChildren" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-              </div>
-            </div>
-            <button onclick="addFamily()" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.98] py-2 rounded-xl text-sm font-medium transition">
-              Guardar en el Censo
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Miembros del cuartelillo</h2>
-          <div id="familyList" class="space-y-2"></div>
-        </div>
-      </section>
     </main>
 
-    <!-- Barra de navegación inferior -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-4 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
+    <!-- Barra de navegación inferior (3 pestañas de uso frecuente) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-6 py-2.5 flex justify-around items-center z-40 max-w-md mx-auto">
       <button onclick="switchTab('dashboard')" id="navDashboard" class="flex flex-col items-center gap-1 text-emerald-400">
         <i class="fa-solid fa-layer-group text-base"></i>
-        <span class="text-[10px] font-medium">Fiestas</span>
+        <span class="text-[11px] font-medium">Fiestas</span>
       </button>
       <button onclick="switchTab('expenses')" id="navExpenses" class="flex flex-col items-center gap-1 text-slate-400">
         <i class="fa-solid fa-receipt text-base"></i>
-        <span class="text-[10px] font-medium">Tickets</span>
+        <span class="text-[11px] font-medium">Tickets</span>
       </button>
       <button onclick="switchTab('balances')" id="navBalances" class="flex flex-col items-center gap-1 text-slate-400">
         <i class="fa-solid fa-scale-balanced text-base"></i>
-        <span class="text-[10px] font-medium">Balances</span>
-      </button>
-      <button onclick="switchTab('families')" id="navFamilies" class="flex flex-col items-center gap-1 text-slate-400">
-        <i class="fa-solid fa-users text-base"></i>
-        <span class="text-[10px] font-medium">Censo</span>
+        <span class="text-[11px] font-medium">Balances</span>
       </button>
     </nav>
+  </div>
+
+  <!-- MODAL: AJUSTES Y CENSO DE COMENSALES (Accesible vía engranaje) -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-white text-base">Configuración del Cuartelillo</h3>
+          <p class="text-xs text-slate-400">Censo habitual y proporción de menús</p>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-sm flex-1">
+        <!-- Proporción menú infantil -->
+        <div class="bg-slate-900 border border-slate-700/80 p-3 rounded-2xl flex items-center justify-between">
+          <div>
+            <div class="font-medium text-xs text-white">Menú Infantil</div>
+            <div class="text-[11px] text-slate-400">Proporción respecto a 1 adulto</div>
+          </div>
+          <select id="globalChildPercent" onchange="updateChildPercent()" class="bg-slate-800 border border-slate-700 text-emerald-400 font-bold text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
+            <option value="0.4">40% (0.4)</option>
+            <option value="0.5">50% (0.5 mitad)</option>
+            <option value="0.6">60% (0.6)</option>
+            <option value="0.7">70% (0.7)</option>
+            <option value="0.8">80% (0.8)</option>
+            <option value="1.0">100% (igual adulto)</option>
+          </select>
+        </div>
+
+        <!-- Añadir al censo -->
+        <div class="bg-slate-900 border border-slate-700/80 p-3 rounded-2xl space-y-2.5">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Añadir nueva familia</span>
+          <input type="text" id="newFamilyName" placeholder="Nombre (ej. Juan y María)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-slate-400">Adultos habituales</label>
+              <input type="number" id="newFamilyAdults" value="2" min="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-400">Niños habituales</label>
+              <input type="number" id="newFamilyChildren" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+            </div>
+          </div>
+          <button onclick="addFamily()" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.98] py-2 rounded-xl text-sm font-medium transition text-white">
+            Guardar en el Censo
+          </button>
+        </div>
+
+        <!-- Miembros del censo -->
+        <div class="space-y-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Miembros habituales</span>
+          <div id="familyList" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-700 bg-slate-800">
+        <button onclick="closeSettingsModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] py-2.5 rounded-xl font-semibold text-white transition text-sm">
+          Listo
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: REGISTRAR / EDITAR TICKET -->
@@ -301,6 +317,17 @@
       return appData.events.find(e => e.id === appData.activeEventId) || appData.events[0];
     }
 
+    function openSettingsModal() {
+      let selWeight = document.getElementById('globalChildPercent');
+      if (selWeight) selWeight.value = getChildWeight().toString();
+      renderFamilies();
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
     function updateChildPercent() {
       let val = parseFloat(document.getElementById('globalChildPercent').value);
       appData.childWeight = val;
@@ -387,9 +414,6 @@
       syncEl.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-xs text-emerald-400"></i>`;
       syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400";
       
-      let selWeight = document.getElementById('globalChildPercent');
-      if (selWeight) selWeight.value = getChildWeight().toString();
-
       renderAll();
     }
 
@@ -470,12 +494,10 @@
       document.getElementById('viewDashboard').classList.toggle('hidden', tab !== 'dashboard');
       document.getElementById('viewExpenses').classList.toggle('hidden', tab !== 'expenses');
       document.getElementById('viewBalances').classList.toggle('hidden', tab !== 'balances');
-      document.getElementById('viewFamilies').classList.toggle('hidden', tab !== 'families');
 
       document.getElementById('navDashboard').className = `flex flex-col items-center gap-1 ${tab === 'dashboard' ? 'text-emerald-400' : 'text-slate-400'}`;
       document.getElementById('navExpenses').className = `flex flex-col items-center gap-1 ${tab === 'expenses' ? 'text-emerald-400' : 'text-slate-400'}`;
       document.getElementById('navBalances').className = `flex flex-col items-center gap-1 ${tab === 'balances' ? 'text-emerald-400' : 'text-slate-400'}`;
-      document.getElementById('navFamilies').className = `flex flex-col items-center gap-1 ${tab === 'families' ? 'text-emerald-400' : 'text-slate-400'}`;
     }
 
     function renderAll() {
@@ -488,7 +510,6 @@
       renderBalances();
     }
 
-    // DASHBOARD DE FIESTAS
     function renderDashboard() {
       let activeContainer = document.getElementById('activeEventsList');
       let archivedContainer = document.getElementById('archivedEventsList');
@@ -511,7 +532,6 @@
           });
         }
         let adultPrice = totalPts > 0 ? (totalSpent / totalPts) : 0;
-
         let isSelected = (ev.id === appData.activeEventId);
 
         let card = document.createElement('div');
@@ -575,10 +595,11 @@
 
     function renderFamilies() {
       let container = document.getElementById('familyList');
+      if (!container) return;
       container.innerHTML = '';
       appData.families.forEach(f => {
         let div = document.createElement('div');
-        div.className = "bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center";
+        div.className = "bg-slate-800 border border-slate-700/80 p-3 rounded-xl flex justify-between items-center";
         div.innerHTML = `
           <div>
             <div class="font-semibold text-white text-sm">${f.name}</div>
@@ -607,12 +628,14 @@
 
       document.getElementById('newFamilyName').value = '';
       saveState();
+      renderFamilies();
     }
 
     function deleteFamily(id) {
       if (!confirm("¿Eliminar del censo?")) return;
       appData.families = appData.families.filter(f => f.id !== id);
       saveState();
+      renderFamilies();
     }
 
     function openNewExpenseModal() {
@@ -623,8 +646,8 @@
       }
 
       if (appData.families.length === 0) {
-        alert("Añade primero familias en el Censo.");
-        switchTab('families');
+        alert("Añade primero familias en la configuración (icono del engranaje).");
+        openSettingsModal();
         return;
       }
 
@@ -875,7 +898,6 @@
       saveState();
     }
 
-    // LISTA DE TICKETS: limpia y sin puntos
     function renderExpenses() {
       let container = document.getElementById('expenseList');
       container.innerHTML = '';
@@ -1043,7 +1065,7 @@
         container.appendChild(div);
       });
 
-      // LIQUIDACIÓN BIZUM OPTIMIZADA (MÍNIMAS TRANSFERENCIAS)
+      // LIQUIDACIÓN BIZUM OPTIMIZADA
       let creditors = [];
       let debtors = [];
       for (let fId in details) {
@@ -1055,7 +1077,7 @@
 
       let settlements = [];
 
-      // Fase 1: Emparejamientos exactos 1 a 1
+      // Fase 1: Emparejamientos 1 a 1 exactos
       for (let d = debtors.length - 1; d >= 0; d--) {
         for (let c = creditors.length - 1; c >= 0; c--) {
           if (Math.abs(debtors[d].amount - creditors[c].amount) < 0.01) {
