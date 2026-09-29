@@ -54,13 +54,17 @@
             <h1 class="font-bold text-sm text-white leading-tight">El Hornico</h1>
             <p id="headerCurrentEvent" class="text-[11px] text-emerald-400 font-medium truncate max-w-[170px]"></p>
           </div>
-          <span id="syncStatus" class="text-[9px] text-emerald-400/80 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40 ml-1">Nube OK</span>
         </div>
-        <div class="flex gap-1.5 items-center">
-          <button onclick="exportData()" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center gap-1" title="Descargar Backup">
+
+        <!-- Acciones a la derecha con icono de nube y tick -->
+        <div class="flex gap-2 items-center">
+          <div id="syncStatus" class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400" title="Sincronizado">
+            <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+          </div>
+          <button onclick="exportData()" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 text-xs flex items-center justify-center" title="Descargar Backup">
             <i class="fa-solid fa-download"></i>
           </button>
-          <button onclick="handleLogout()" class="px-2 py-1.5 bg-slate-700 hover:bg-rose-900/60 text-slate-200 hover:text-rose-300 rounded-lg text-xs flex items-center gap-1" title="Cerrar sesión">
+          <button onclick="handleLogout()" class="w-7 h-7 bg-slate-700 hover:bg-rose-900/60 text-slate-200 hover:text-rose-300 rounded-lg text-xs flex items-center justify-center" title="Cerrar sesión">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
@@ -361,7 +365,10 @@
     }
 
     async function loadCloudData() {
-      document.getElementById('syncStatus').innerText = "Cargando...";
+      let syncEl = document.getElementById('syncStatus');
+      syncEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs text-slate-400"></i>`;
+      syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 text-slate-400";
+
       const { data, error } = await supabaseClient
         .from('app_state')
         .select('data')
@@ -376,7 +383,9 @@
           if (typeof ev.isArchived !== 'boolean') ev.isArchived = false;
         });
       }
-      document.getElementById('syncStatus').innerText = "Nube OK";
+
+      syncEl.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-xs text-emerald-400"></i>`;
+      syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400";
       
       let selWeight = document.getElementById('globalChildPercent');
       if (selWeight) selWeight.value = getChildWeight().toString();
@@ -386,17 +395,21 @@
 
     async function saveState() {
       renderAll();
-      document.getElementById('syncStatus').innerText = "Guardando...";
+      let syncEl = document.getElementById('syncStatus');
+      syncEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs text-amber-400"></i>`;
+      syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 text-amber-400";
 
       const { error } = await supabaseClient
         .from('app_state')
         .upsert({ id: 'cuartelillo_principal', data: appData, updated_at: new Date().toISOString() });
 
       if (error) {
-        document.getElementById('syncStatus').innerText = "Error Nube";
+        syncEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xs text-rose-400"></i>`;
+        syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-400";
         console.error(error);
       } else {
-        document.getElementById('syncStatus').innerText = "Nube OK";
+        syncEl.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-xs text-emerald-400"></i>`;
+        syncEl.className = "flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400";
       }
     }
 
@@ -475,7 +488,7 @@
       renderBalances();
     }
 
-    // RENDERIZA EL DASHBOARD DE FIESTAS
+    // DASHBOARD DE FIESTAS
     function renderDashboard() {
       let activeContainer = document.getElementById('activeEventsList');
       let archivedContainer = document.getElementById('archivedEventsList');
@@ -862,7 +875,7 @@
       saveState();
     }
 
-    // LISTA DE TICKETS: Limpia sin puntos
+    // LISTA DE TICKETS: limpia y sin puntos
     function renderExpenses() {
       let container = document.getElementById('expenseList');
       container.innerHTML = '';
@@ -1030,7 +1043,7 @@
         container.appendChild(div);
       });
 
-      // LIQUIDACIÓN BIZUM OPTIMIZADA AL MÍNIMO NÚMERO
+      // LIQUIDACIÓN BIZUM OPTIMIZADA (MÍNIMAS TRANSFERENCIAS)
       let creditors = [];
       let debtors = [];
       for (let fId in details) {
@@ -1042,7 +1055,7 @@
 
       let settlements = [];
 
-      // Fase 1: Emparejamientos 1 a 1 exactos
+      // Fase 1: Emparejamientos exactos 1 a 1
       for (let d = debtors.length - 1; d >= 0; d--) {
         for (let c = creditors.length - 1; c >= 0; c--) {
           if (Math.abs(debtors[d].amount - creditors[c].amount) < 0.01) {
