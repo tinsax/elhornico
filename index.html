@@ -129,8 +129,8 @@
         <div id="expenseList" class="space-y-2"></div>
       </section>
 
-      <!-- TAB 2: BALANCES Y BIZUM DEL EVENTO -->
-      <section id="viewBalances" class="space-y-4 hidden">
+      <!-- TAB 2: BALANCE DEL EVENTO -->
+      <section id="viewBalance" class="space-y-4 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
           <div class="flex justify-between items-center">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Desglose y Balance</h2>
@@ -138,12 +138,17 @@
           </div>
           <div id="balanceList" class="space-y-2.5"></div>
         </div>
+      </section>
 
+      <!-- TAB 3: BIZUMS DEL EVENTO -->
+      <section id="viewBizums" class="space-y-4 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
           <div class="flex justify-between items-center">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>              
+            </div>
             <button onclick="copyWhatsAppSummary()" class="text-xs bg-emerald-700/40 hover:bg-emerald-700 text-emerald-300 border border-emerald-600/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition">
-              <i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp
+              <i class="fa-brands fa-whatsapp"></i> Copiar WhatsApp
             </button>
           </div>
           <div id="settlementList" class="space-y-2 text-sm"></div>
@@ -151,24 +156,28 @@
       </section>
     </main>
 
-    <!-- Barra de navegación inferior (3 pestañas de uso frecuente) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-6 py-2.5 flex justify-around items-center z-40 max-w-md mx-auto">
+    <!-- Barra de navegación inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur border-t border-slate-700 px-4 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
       <button onclick="switchTab('dashboard')" id="navDashboard" class="flex flex-col items-center gap-1 text-emerald-400">
         <i class="fa-solid fa-layer-group text-base"></i>
-        <span class="text-[11px] font-medium">Fiestas</span>
+        <span class="text-[10px] font-medium">Fiestas</span>
       </button>
       <button onclick="switchTab('expenses')" id="navExpenses" class="flex flex-col items-center gap-1 text-slate-400">
         <i class="fa-solid fa-receipt text-base"></i>
-        <span class="text-[11px] font-medium">Tickets</span>
+        <span class="text-[10px] font-medium">Tickets</span>
       </button>
-      <button onclick="switchTab('balances')" id="navBalances" class="flex flex-col items-center gap-1 text-slate-400">
+      <button onclick="switchTab('balance')" id="navBalance" class="flex flex-col items-center gap-1 text-slate-400">
         <i class="fa-solid fa-scale-balanced text-base"></i>
-        <span class="text-[11px] font-medium">Balances</span>
+        <span class="text-[10px] font-medium">Balance</span>
+      </button>
+      <button onclick="switchTab('bizums')" id="navBizums" class="flex flex-col items-center gap-1 text-slate-400">
+        <i class="fa-solid fa-money-bill-transfer text-base"></i>
+        <span class="text-[10px] font-medium">Bizums</span>
       </button>
     </nav>
   </div>
 
-  <!-- MODAL: AJUSTES Y CENSO DE COMENSALES (Accesible vía engranaje) -->
+  <!-- MODAL: AJUSTES Y CENSO DE COMENSALES -->
   <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center">
@@ -406,8 +415,19 @@
         appData = data.data;
         if (!appData.settlementStatus) appData.settlementStatus = {};
         if (typeof appData.childWeight !== 'number') appData.childWeight = 0.5;
+        
+        // Auto-reparar fechas si faltan en eventos
         appData.events.forEach(ev => {
           if (typeof ev.isArchived !== 'boolean') ev.isArchived = false;
+          if (!ev.date) {
+            let evExp = appData.expenses.filter(x => x.eventId === ev.id);
+            if (evExp.length > 0 && evExp[0].date) {
+              ev.date = evExp[0].date;
+            } else {
+              let f = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(new Date());
+              ev.date = f.charAt(0).toUpperCase() + f.slice(1);
+            }
+          }
         });
       }
 
@@ -456,7 +476,9 @@
       if (!name || !name.trim()) return;
 
       let newId = Date.now();
-      let currentDate = new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+      let f = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(new Date());
+      let currentDate = f.charAt(0).toUpperCase() + f.slice(1);
+
       appData.events.unshift({ 
         id: newId, 
         name: name.trim(), 
@@ -493,11 +515,13 @@
     function switchTab(tab) {
       document.getElementById('viewDashboard').classList.toggle('hidden', tab !== 'dashboard');
       document.getElementById('viewExpenses').classList.toggle('hidden', tab !== 'expenses');
-      document.getElementById('viewBalances').classList.toggle('hidden', tab !== 'balances');
+      document.getElementById('viewBalance').classList.toggle('hidden', tab !== 'balance');
+      document.getElementById('viewBizums').classList.toggle('hidden', tab !== 'bizums');
 
       document.getElementById('navDashboard').className = `flex flex-col items-center gap-1 ${tab === 'dashboard' ? 'text-emerald-400' : 'text-slate-400'}`;
       document.getElementById('navExpenses').className = `flex flex-col items-center gap-1 ${tab === 'expenses' ? 'text-emerald-400' : 'text-slate-400'}`;
-      document.getElementById('navBalances').className = `flex flex-col items-center gap-1 ${tab === 'balances' ? 'text-emerald-400' : 'text-slate-400'}`;
+      document.getElementById('navBalance').className = `flex flex-col items-center gap-1 ${tab === 'balance' ? 'text-emerald-400' : 'text-slate-400'}`;
+      document.getElementById('navBizums').className = `flex flex-col items-center gap-1 ${tab === 'bizums' ? 'text-emerald-400' : 'text-slate-400'}`;
     }
 
     function renderAll() {
@@ -507,7 +531,7 @@
       renderDashboard();
       renderFamilies();
       renderExpenses();
-      renderBalances();
+      renderBalanceAndBizums();
     }
 
     function renderDashboard() {
@@ -561,10 +585,13 @@
           <div class="flex justify-between items-center pt-2 border-t border-slate-700/50 mt-2 text-xs">
             <div class="flex gap-2">
               <button onclick="event.stopPropagation(); selectEvent(${ev.id}, 'expenses')" class="text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
-                <i class="fa-solid fa-receipt"></i> Ver Tickets
+                <i class="fa-solid fa-receipt"></i> Tickets
               </button>
-              <button onclick="event.stopPropagation(); selectEvent(${ev.id}, 'balances')" class="text-slate-300 hover:text-white font-medium flex items-center gap-1 ml-2">
-                <i class="fa-solid fa-scale-balanced"></i> Balances
+              <button onclick="event.stopPropagation(); selectEvent(${ev.id}, 'balance')" class="text-slate-300 hover:text-white font-medium flex items-center gap-1 ml-1.5">
+                <i class="fa-solid fa-scale-balanced"></i> Balance
+              </button>
+              <button onclick="event.stopPropagation(); selectEvent(${ev.id}, 'bizums')" class="text-emerald-300 hover:text-white font-medium flex items-center gap-1 ml-1.5">
+                <i class="fa-solid fa-money-bill-transfer"></i> Bizums
               </button>
             </div>
             <div class="flex items-center gap-2">
@@ -898,6 +925,7 @@
       saveState();
     }
 
+    // LISTA DE TICKETS: Limpia, sin fecha ni puntos en los tickets individuales
     function renderExpenses() {
       let container = document.getElementById('expenseList');
       container.innerHTML = '';
@@ -922,10 +950,7 @@
         div.className = "bg-slate-800 border border-slate-700 p-3 rounded-xl flex items-center justify-between";
         div.innerHTML = `
           <div>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-white text-sm">${e.description}</span>
-              <span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">${e.date}</span>
-            </div>
+            <div class="font-bold text-white text-sm">${e.description}</div>
             <div class="text-xs text-slate-400">Pagado por: <span class="text-emerald-300 font-medium">${payer}</span></div>
           </div>
           <div class="flex items-center gap-2">
@@ -999,9 +1024,9 @@
       saveState();
     }
 
-    function renderBalances() {
+    function renderBalanceAndBizums() {
       let details = calculateDetailedBalances();
-      let container = document.getElementById('balanceList');
+      let containerBalance = document.getElementById('balanceList');
       let currentExpenses = getCurrentEventExpenses();
       let totalSpent = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
       let childWeight = getChildWeight();
@@ -1019,14 +1044,14 @@
       let adultPrice = totalPartyPoints > 0 ? (totalSpent / totalPartyPoints) : 0;
       let childPrice = adultPrice * childWeight;
 
-      container.innerHTML = '';
+      containerBalance.innerHTML = '';
 
       if (totalSpent > 0 && totalPartyPoints > 0) {
         let percentText = Math.round(childWeight * 100);
         let headerDiv = document.createElement('div');
         headerDiv.className = "bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-2.5 text-center text-xs text-emerald-300 font-medium mb-3";
         headerDiv.innerHTML = `Precio menú: <strong class="text-white">${adultPrice.toFixed(2)} €</strong> adulto • <strong class="text-white">${childPrice.toFixed(2)} €</strong> niño (${percentText}%)`;
-        container.appendChild(headerDiv);
+        containerBalance.appendChild(headerDiv);
       }
 
       appData.families.forEach(f => {
@@ -1062,7 +1087,7 @@
             <span>Le toca pagar: <strong class="text-slate-300 font-medium">${item.consumed.toFixed(2)} €</strong></span>
           </div>
         `;
-        container.appendChild(div);
+        containerBalance.appendChild(div);
       });
 
       // LIQUIDACIÓN BIZUM OPTIMIZADA
@@ -1077,7 +1102,7 @@
 
       let settlements = [];
 
-      // Fase 1: Emparejamientos 1 a 1 exactos
+      // Fase 1: Emparejamientos exactos 1 a 1
       for (let d = debtors.length - 1; d >= 0; d--) {
         for (let c = creditors.length - 1; c >= 0; c--) {
           if (Math.abs(debtors[d].amount - creditors[c].amount) < 0.01) {
