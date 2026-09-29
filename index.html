@@ -105,9 +105,9 @@
 
       <!-- TAB 1: TICKETS DEL EVENTO -->
       <section id="viewExpenses" class="space-y-4 hidden">
-        <div id="archivedBanner" class="hidden bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl text-xs text-amber-300 flex items-center gap-2">
+        <div id="archivedBannerExpenses" class="hidden bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl text-xs text-amber-300 flex items-center gap-2">
           <i class="fa-solid fa-lock"></i>
-          <span>Esta fiesta está archivada. Está en modo solo lectura.</span>
+          <span>Esta fiesta está archivada. Modo solo lectura.</span>
         </div>
 
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex justify-between items-center shadow-md">
@@ -142,10 +142,16 @@
 
       <!-- TAB 3: BIZUMS DEL EVENTO -->
       <section id="viewBizums" class="space-y-4 hidden">
+        <div id="archivedBannerBizums" class="hidden bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl text-xs text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-lock"></i>
+          <span>Esta fiesta está archivada. No se pueden modificar pagos.</span>
+        </div>
+
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
           <div class="flex justify-between items-center">
             <div>
               <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Liquidación Bizum</h2>
+              <p class="text-[10px] text-slate-400">Pagos optimizados para saldar cuentas</p>
             </div>
             <button onclick="copyWhatsAppSummary()" class="text-xs bg-emerald-700/40 hover:bg-emerald-700 text-emerald-300 border border-emerald-600/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition">
               <i class="fa-brands fa-whatsapp"></i> Copiar WhatsApp
@@ -935,7 +941,7 @@
       let currentEvent = getActiveEvent();
       let isArchived = currentEvent ? currentEvent.isArchived : false;
 
-      document.getElementById('archivedBanner').classList.toggle('hidden', !isArchived);
+      document.getElementById('archivedBannerExpenses').classList.toggle('hidden', !isArchived);
       let btnAdd = document.getElementById('btnOpenExpenseModal');
       if (isArchived) {
         btnAdd.classList.add('opacity-40', 'pointer-events-none');
@@ -1019,6 +1025,8 @@
     }
 
     function toggleSettlement(key) {
+      let currentEvent = getActiveEvent();
+      if (currentEvent && currentEvent.isArchived) return;
       if (!appData.settlementStatus) appData.settlementStatus = {};
       appData.settlementStatus[key] = !appData.settlementStatus[key];
       saveState();
@@ -1030,6 +1038,12 @@
       let currentExpenses = getCurrentEventExpenses();
       let totalSpent = currentExpenses.reduce((acc, curr) => acc + curr.amount, 0);
       let childWeight = getChildWeight();
+
+      let currentEvent = getActiveEvent();
+      let isArchived = currentEvent ? currentEvent.isArchived : false;
+
+      let bannerBizums = document.getElementById('archivedBannerBizums');
+      if (bannerBizums) bannerBizums.classList.toggle('hidden', !isArchived);
 
       let sampleTicket = currentExpenses.length > 0 ? currentExpenses[currentExpenses.length - 1] : null;
       let totalPartyPoints = 0;
@@ -1176,7 +1190,9 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="font-bold text-sm ${s.done ? 'text-slate-500 line-through' : 'text-white'}">${s.amount.toFixed(2)} €</span>
-              <button onclick="toggleSettlement('${s.key}')" class="px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+              <button ${isArchived ? 'disabled' : `onclick="toggleSettlement('${s.key}')"`} class="px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+                isArchived ? 'opacity-40 cursor-not-allowed ' : ''
+              }${
                 s.done 
                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
@@ -1206,7 +1222,7 @@
       text += `💰 *Gasto total fiesta:* ${total.toFixed(2)} €\n`;
       if (window.lastAdultPrice) {
         let percent = Math.round(window.lastChildWeight * 100);
-        text += `🏷️️ *Precio menú:* ${window.lastAdultPrice.toFixed(2)} € adulto | ${window.lastChildPrice.toFixed(2)} € niño (${percent}%)\n\n`;
+        text += `🏷️ *Precio menú:* ${window.lastAdultPrice.toFixed(2)} € adulto | ${window.lastChildPrice.toFixed(2)} € niño (${percent}%)\n\n`;
       } else {
         text += `\n`;
       }
